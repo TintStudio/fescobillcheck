@@ -1,8 +1,6 @@
-// Vercel Serverless Function — /api/bill.js
-// Deploy free at vercel.com — works instantly, no server needed
-
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Content-Type", "application/json");
 
   const refno = (req.query.refno || "").replace(/\D/g, "");
 
@@ -16,13 +14,15 @@ export default async function handler(req, res) {
       {
         headers: {
           Accept: "application/json",
-          "User-Agent":
-            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+          Referer: "https://bill.pitc.com.pk/",
         },
       }
     );
 
-    if (!response.ok) throw new Error("PITC error");
+    if (!response.ok) {
+      return res.status(502).json({ error: "FESCO server error" });
+    }
 
     const data = await response.json();
     return res.status(200).json(data);

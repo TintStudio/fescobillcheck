@@ -34,7 +34,6 @@ input[type=tel].err{border-color:#e53935}
 .badge{font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px}
 .badge-unpaid{background:#fce8e6;color:#c5221f}
 .badge-paid{background:#e6f4ea;color:#137333}
-.badge-overdue{background:#fef7e0;color:#b06000}
 .metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
 .metric{background:#f8f9fa;border-radius:8px;padding:12px}
 .metric-label{font-size:11px;color:#888;margin-bottom:4px}
@@ -47,18 +46,18 @@ input[type=tel].err{border-color:#e53935}
 .charge-label{color:#555}
 .charge-val{color:#1a1a1a}
 .charge-val.red{color:#c5221f}
-.actions{display:flex;gap:8px}
+.actions{display:flex;gap:8px;margin-bottom:16px}
 .act-btn{flex:1;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#1a1a1a;transition:background 0.15s}
 .act-btn:hover{background:#f5f5f5}
 .act-btn.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
 .act-btn.primary:hover{background:#1558b0}
-.how-label{font-size:12px;color:#888;margin:16px 0 10px;text-align:center}
+.pay-label{font-size:12px;color:#888;margin-bottom:10px;text-align:center}
 .pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.pay-card{background:#f8f9fa;border-radius:8px;padding:10px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #e8e8e8}
+.pay-card{background:#f8f9fa;border-radius:8px;padding:10px;text-align:center;font-size:12px;font-weight:600;cursor:pointer;border:1px solid #e8e8e8;transition:all 0.15s}
 .pay-card:hover{background:#e8f0fe;border-color:#1a73e8}
+.debug-box{background:#f8f9fa;border:1px solid #e0e0e0;border-radius:8px;padding:12px;margin-top:12px;font-size:11px;color:#666;display:none}
+.debug-box pre{overflow-x:auto;white-space:pre-wrap;word-break:break-all;font-size:11px;margin-top:6px}
 .footer{text-align:center;font-size:11px;color:#aaa;margin-top:24px;line-height:1.8}
-
-/* ===== CONFIG: Change this to your proxy URL ===== */
 </style>
 </head>
 <body>
@@ -72,7 +71,6 @@ input[type=tel].err{border-color:#e53935}
 </div>
 
 <div class="container">
-
   <div class="card">
     <div class="card-title">Check your FESCO bill</div>
     <div class="input-group">
@@ -94,7 +92,7 @@ input[type=tel].err{border-color:#e53935}
         <div class="consumer-name" id="rName">—</div>
         <div class="consumer-ref" id="rRef">—</div>
       </div>
-      <div class="badge" id="rBadge">—</div>
+      <div class="badge badge-unpaid" id="rBadge">Unpaid</div>
     </div>
 
     <div class="metrics">
@@ -122,11 +120,16 @@ input[type=tel].err{border-color:#e53935}
       <button class="act-btn primary" onclick="viewFullBill()">View full bill</button>
     </div>
 
-    <div class="how-label">Pay your bill online via</div>
+    <div class="pay-label">Pay your bill online via</div>
     <div class="pay-grid">
-      <div class="pay-card" onclick="openPay('jazzcash')">JazzCash</div>
-      <div class="pay-card" onclick="openPay('easypaisa')">EasyPaisa</div>
-      <div class="pay-card" onclick="openPay('bank')">Internet Banking</div>
+      <div class="pay-card" onclick="window.open('https://www.jazzcash.com.pk/pay-bills/','_blank')">JazzCash</div>
+      <div class="pay-card" onclick="window.open('https://easypaisa.com.pk/utility-bills/','_blank')">EasyPaisa</div>
+      <div class="pay-card" onclick="window.open('https://www.hbl.com/personal/digital-banking/internet-banking/','_blank')">Internet Banking</div>
+    </div>
+
+    <div class="debug-box" id="debugBox">
+      <strong>Raw API response (for debugging):</strong>
+      <pre id="debugPre"></pre>
     </div>
   </div>
 
@@ -137,13 +140,6 @@ input[type=tel].err{border-color:#e53935}
 </div>
 
 <script>
-// ============================================================
-// CONFIG — change this ONE line to your proxy URL
-// PHP hosting:  '/proxy.php'
-// Vercel:       '/api/bill'
-// ============================================================
-var PROXY_URL = '/proxy.php';
-
 var lastRef = '';
 
 function fmtRef(inp) {
@@ -157,7 +153,9 @@ function fmtRef(inp) {
 }
 
 function Rs(n) {
-  return 'Rs ' + Math.round(Number(n)||0).toLocaleString();
+  var num = parseFloat(String(n).replace(/,/g,''));
+  if(isNaN(num)) return '—';
+  return 'Rs ' + Math.round(num).toLocaleString();
 }
 
 function setErr(msg) {
@@ -169,7 +167,7 @@ function check() {
   setErr('');
   var raw = document.getElementById('refInput').value.replace(/\D/g,'');
   if (!raw) { setErr('Please enter your 14-digit reference number.'); return; }
-  if (raw.length !== 14) { setErr('Must be exactly 14 digits. You entered ' + raw.length + '.'); return; }
+  if (raw.length !== 14) { setErr('Must be 14 digits. You entered ' + raw.length + '.'); return; }
   lastRef = raw;
   fetchBill(raw);
 }
@@ -179,61 +177,81 @@ function fetchBill(refno) {
   document.getElementById('loader').style.display = 'block';
   document.getElementById('checkBtn').disabled = true;
 
-  fetch(PROXY_URL + '?refno=' + refno)
+  fetch('/api/bill?refno=' + refno)
     .then(function(r){ return r.json(); })
-    .then(function(data){ renderBill(data); })
-    .catch(function(){ showError('Connection error. Please try again.'); })
+    .then(function(data){
+      document.getElementById('debugPre').textContent = JSON.stringify(data, null, 2);
+      document.getElementById('debugBox').style.display = 'block';
+      renderBill(data);
+    })
+    .catch(function(e){
+      setErr('Connection error. Please try again.');
+    })
     .finally(function(){
       document.getElementById('loader').style.display = 'none';
       document.getElementById('checkBtn').disabled = false;
     });
 }
 
-function showError(msg) {
-  setErr(msg);
-  document.getElementById('loader').style.display = 'none';
-  document.getElementById('checkBtn').disabled = false;
+function get(obj) {
+  // Try multiple possible key variations from PITC API
+  for(var i=1;i<arguments.length;i++){
+    var k = arguments[i];
+    if(obj[k] !== undefined && obj[k] !== null && obj[k] !== '') return obj[k];
+    // try lowercase
+    if(obj[k.toLowerCase()] !== undefined && obj[k.toLowerCase()] !== '') return obj[k.toLowerCase()];
+    // try uppercase
+    if(obj[k.toUpperCase()] !== undefined && obj[k.toUpperCase()] !== '') return obj[k.toUpperCase()];
+  }
+  return '';
 }
 
 function renderBill(d) {
-  // PITC returns billingmonth, duedate, amount, payableamount,
-  // consumerName, address, unitsconsumed, status, etc.
-  // Adjust field names below if PITC changes their JSON keys.
+  if (d.error) { setErr(d.error); return; }
 
-  if (d.error || d.status === 'failure' || !d.billingmonth) {
-    showError('No bill found for this reference number.');
-    return;
+  // Consumer info
+  var name = get(d,'consumerName','consumername','consumer_name','name','CONSUMERNAME') || 'Consumer';
+  var tariff = get(d,'tariffType','tarifftype','tariff_type','connectionType','TARIFFTYPE');
+  var sdo = get(d,'sdoName','sdoname','sdo_name','division','SDO','SDONAME') || 'Faisalabad';
+
+  document.getElementById('rName').textContent = name;
+  document.getElementById('rRef').textContent = 'Ref: ' + lastRef + (tariff?' · '+tariff:'') + ' · ' + sdo;
+
+  // Amounts
+  var amt   = get(d,'payableAmount','payableamount','netPayable','netpayable','amount','AMOUNT','payable_amount');
+  var late  = get(d,'payableAmountAfterDueDate','amountafterdue','latePayment','AMOUNTAFTERDUE','after_due_date_amount');
+  var units = get(d,'unitsConsumed','unitsconsumed','units','UNITSCONSUMED','units_consumed');
+  var due   = get(d,'dueDate','duedate','due_date','DUEDATE');
+  var month = get(d,'billingMonth','billingmonth','billing_month','BILLINGMONTH');
+  var status= get(d,'paymentStatus','paymentstatus','payment_status','status','STATUS');
+
+  document.getElementById('rAmount').textContent = Rs(amt);
+  document.getElementById('rDue').textContent    = due ? 'Due: '+due : '';
+  document.getElementById('rUnits').textContent  = units || '—';
+  document.getElementById('rBillMonth').textContent = month || '';
+  document.getElementById('rLate').textContent   = late ? Rs(late) : '—';
+
+  var badge = document.getElementById('rBadge');
+  if(String(status).toLowerCase().includes('paid') && !String(status).toLowerCase().includes('unpaid')){
+    badge.textContent='Paid'; badge.className='badge badge-paid';
+  } else {
+    badge.textContent='Unpaid'; badge.className='badge badge-unpaid';
   }
 
-  document.getElementById('rName').textContent = d.consumerName || d.consumername || 'Consumer';
-  document.getElementById('rRef').textContent = 'Ref: ' + lastRef + ' · ' + (d.tariffType || d.tarifftype || '') + ' · ' + (d.sdoName || d.sdoname || 'Faisalabad');
-
-  var amt = d.payableamount || d.amount || d.netPayable || 0;
-  var lateAmt = d.payableAmountAfterDueDate || d.amountafterdue || 0;
-  document.getElementById('rAmount').textContent = Rs(amt);
-  document.getElementById('rDue').textContent = 'Due: ' + (d.duedate || '—');
-  document.getElementById('rUnits').textContent = (d.unitsconsumed || d.unitsConsumed || '—');
-  document.getElementById('rBillMonth').textContent = d.billingmonth || d.billingMonth || '';
-  document.getElementById('rLate').textContent = Rs(lateAmt);
-
-  var paid = String(d.paymentStatus || d.paymentstatus || '').toLowerCase().includes('paid');
-  var badge = document.getElementById('rBadge');
-  if (paid) { badge.textContent='Paid'; badge.className='badge badge-paid'; }
-  else { badge.textContent='Unpaid'; badge.className='badge badge-unpaid'; }
-
   // Charge breakdown
-  var charges = [
-    ['Electricity charges', d.electricityCharges || d.electricitycharges || ''],
-    ['FPA (fuel price adjustment)', d.fpa || d.FPA || ''],
-    ['TR surcharge', d.trSurcharge || d.trsurcharge || ''],
-    ['FC surcharge', d.fcSurcharge || d.fcsurcharge || ''],
-    ['GST', d.gst || d.GST || ''],
-    ['TV licence fee', d.tvFee || d.tvfee || 35],
+  var lines = [
+    ['Electricity charges', get(d,'electricityCharges','electricitycharges','electricity_charges','ELECTRICITYCHARGES')],
+    ['FPA',                 get(d,'fpa','FPA','fuelPriceAdjustment','fuel_price_adjustment')],
+    ['TR surcharge',        get(d,'trSurcharge','trsurcharge','tr_surcharge','TRSURCHARGE')],
+    ['FC surcharge',        get(d,'fcSurcharge','fcsurcharge','fc_surcharge','FCSURCHARGE')],
+    ['GST',                 get(d,'gst','GST','salesTax','sales_tax')],
+    ['TV licence fee',      get(d,'tvFee','tvfee','tv_fee','TVFEE','tvLicenceFee')],
+    ['Income tax',          get(d,'incomeTax','incometax','income_tax','INCOMETAX')],
   ];
   var html = '';
-  charges.forEach(function(c){
-    if(!c[1] && c[1]!==0) return;
-    html += '<div class="charge-row"><span class="charge-label">'+c[0]+'</span><span class="charge-val">'+Rs(c[1])+'</span></div>';
+  lines.forEach(function(l){
+    if(l[1]==='') return;
+    html += '<div class="charge-row"><span class="charge-label">'+l[0]+'</span><span class="charge-val">'+Rs(l[1])+'</span></div>';
   });
   html += '<div class="charge-row"><span class="charge-label">Total payable</span><span class="charge-val red">'+Rs(amt)+'</span></div>';
   document.getElementById('chargesBox').innerHTML = html;
@@ -241,17 +259,8 @@ function renderBill(d) {
   document.getElementById('result').style.display = 'block';
 }
 
-function viewFullBill() {
-  window.open('https://bill.pitc.com.pk/fescobill/general?refno=' + lastRef, '_blank');
-}
-
-function openPay(method) {
-  var urls = {
-    jazzcash: 'https://www.jazzcash.com.pk/pay-bills/',
-    easypaisa: 'https://easypaisa.com.pk/utility-bills/',
-    bank: 'https://www.hbl.com/personal/digital-banking/internet-banking/'
-  };
-  window.open(urls[method], '_blank');
+function viewFullBill(){
+  window.open('https://bill.pitc.com.pk/fescobill/general?refno='+lastRef,'_blank');
 }
 </script>
 </body>
