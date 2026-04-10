@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>FESCO Bill Check Online | فیسکو آن لائن بل چیک</title>
+<meta name="description" content="Check your FESCO bill online free. Enter 14-digit reference number to view your Faisalabad Electric Supply Company bill instantly."/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#1a1a1a;min-height:100vh}
+.header{background:#fff;border-bottom:1px solid #e8e8e8;padding:14px 20px;display:flex;align-items:center;gap:10px}
+.header-icon{width:36px;height:36px;background:#e8f0fe;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.header h1{font-size:17px;font-weight:600;color:#1a1a1a}
+.header p{font-size:12px;color:#666;margin-top:1px}
+.container{max-width:520px;margin:24px auto;padding:0 16px 40px}
+.card{background:#fff;border-radius:12px;border:1px solid #e8e8e8;padding:20px;margin-bottom:16px}
+.card-title{font-size:13px;font-weight:600;color:#444;margin-bottom:14px;text-transform:uppercase;letter-spacing:0.04em}
+.input-group{display:flex;gap:8px}
+input[type=tel]{flex:1;height:48px;border:1.5px solid #ddd;border-radius:8px;padding:0 14px;font-size:16px;outline:none;letter-spacing:0.05em;background:#fafafa;transition:border-color 0.2s}
+input[type=tel]:focus{border-color:#1a73e8;background:#fff}
+input[type=tel].err{border-color:#e53935}
+.btn{height:48px;padding:0 20px;background:#1a73e8;color:#fff;border:none;border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;white-space:nowrap;transition:background 0.15s}
+.btn:hover{background:#1558b0}
+.btn:disabled{background:#aaa;cursor:not-allowed}
+.hint{font-size:12px;color:#888;margin-top:8px;line-height:1.6}
+.errmsg{font-size:13px;color:#e53935;margin-top:8px;min-height:18px}
+.loader{display:none;text-align:center;padding:24px;color:#666;font-size:14px}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid #ddd;border-top-color:#1a73e8;border-radius:50%;animation:spin 0.6s linear infinite;vertical-align:middle;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+.result{display:none}
+.bill-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid #f0f0f0}
+.consumer-name{font-size:16px;font-weight:600}
+.consumer-ref{font-size:12px;color:#888;margin-top:3px}
+.badge{font-size:12px;font-weight:600;padding:4px 12px;border-radius:20px}
+.badge-unpaid{background:#fce8e6;color:#c5221f}
+.badge-paid{background:#e6f4ea;color:#137333}
+.badge-overdue{background:#fef7e0;color:#b06000}
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:16px}
+.metric{background:#f8f9fa;border-radius:8px;padding:12px}
+.metric-label{font-size:11px;color:#888;margin-bottom:4px}
+.metric-val{font-size:17px;font-weight:700;color:#1a1a1a}
+.metric-val.red{color:#c5221f}
+.metric-sub{font-size:11px;color:#aaa;margin-top:2px}
+.charges{margin-bottom:16px}
+.charge-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #f5f5f5;font-size:13px}
+.charge-row:last-child{border-bottom:none;font-weight:700;font-size:14px;padding-top:10px}
+.charge-label{color:#555}
+.charge-val{color:#1a1a1a}
+.charge-val.red{color:#c5221f}
+.actions{display:flex;gap:8px}
+.act-btn{flex:1;padding:10px;border:1.5px solid #ddd;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;color:#1a1a1a;transition:background 0.15s}
+.act-btn:hover{background:#f5f5f5}
+.act-btn.primary{background:#1a73e8;color:#fff;border-color:#1a73e8}
+.act-btn.primary:hover{background:#1558b0}
+.how-label{font-size:12px;color:#888;margin:16px 0 10px;text-align:center}
+.pay-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pay-card{background:#f8f9fa;border-radius:8px;padding:10px;text-align:center;font-size:12px;font-weight:500;cursor:pointer;border:1px solid #e8e8e8}
+.pay-card:hover{background:#e8f0fe;border-color:#1a73e8}
+.footer{text-align:center;font-size:11px;color:#aaa;margin-top:24px;line-height:1.8}
+
+/* ===== CONFIG: Change this to your proxy URL ===== */
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-icon">⚡</div>
+  <div>
+    <h1>FESCO Bill Check Online</h1>
+    <p>Faisalabad Electric Supply Company — فیسکو آن لائن بل</p>
+  </div>
+</div>
+
+<div class="container">
+
+  <div class="card">
+    <div class="card-title">Check your FESCO bill</div>
+    <div class="input-group">
+      <input type="tel" id="refInput" maxlength="17" placeholder="0000 0000 0000 00"
+        oninput="fmtRef(this)" onkeydown="if(event.key==='Enter')check()"/>
+      <button class="btn" id="checkBtn" onclick="check()">Check Bill</button>
+    </div>
+    <div class="hint">Enter the <strong>14-digit reference number</strong> from the top-left of your paper bill</div>
+    <div class="errmsg" id="errMsg"></div>
+  </div>
+
+  <div class="loader" id="loader">
+    <span class="spin"></span> Fetching your bill from FESCO...
+  </div>
+
+  <div class="result card" id="result">
+    <div class="bill-header">
+      <div>
+        <div class="consumer-name" id="rName">—</div>
+        <div class="consumer-ref" id="rRef">—</div>
+      </div>
+      <div class="badge" id="rBadge">—</div>
+    </div>
+
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Amount due</div>
+        <div class="metric-val red" id="rAmount">—</div>
+        <div class="metric-sub" id="rDue">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Units consumed</div>
+        <div class="metric-val" id="rUnits">—</div>
+        <div class="metric-sub" id="rBillMonth">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">After due date</div>
+        <div class="metric-val" id="rLate">—</div>
+        <div class="metric-sub">Late surcharge</div>
+      </div>
+    </div>
+
+    <div class="charges" id="chargesBox"></div>
+
+    <div class="actions">
+      <button class="act-btn" onclick="window.print()">Print bill</button>
+      <button class="act-btn primary" onclick="viewFullBill()">View full bill</button>
+    </div>
+
+    <div class="how-label">Pay your bill online via</div>
+    <div class="pay-grid">
+      <div class="pay-card" onclick="openPay('jazzcash')">JazzCash</div>
+      <div class="pay-card" onclick="openPay('easypaisa')">EasyPaisa</div>
+      <div class="pay-card" onclick="openPay('bank')">Internet Banking</div>
+    </div>
+  </div>
+
+  <div class="footer">
+    Data fetched live from PITC / FESCO portal &nbsp;·&nbsp;
+    For official site visit <a href="https://www.fesco.com.pk" style="color:#1a73e8">fesco.com.pk</a>
+  </div>
+</div>
+
+<script>
+// ============================================================
+// CONFIG — change this ONE line to your proxy URL
+// PHP hosting:  '/proxy.php'
+// Vercel:       '/api/bill'
+// ============================================================
+var PROXY_URL = '/proxy.php';
+
+var lastRef = '';
+
+function fmtRef(inp) {
+  var v = inp.value.replace(/\D/g,'');
+  var out = '';
+  for(var i=0;i<v.length&&i<14;i++){
+    if(i===4||i===8||i===12) out+=' ';
+    out+=v[i];
+  }
+  inp.value = out;
+}
+
+function Rs(n) {
+  return 'Rs ' + Math.round(Number(n)||0).toLocaleString();
+}
+
+function setErr(msg) {
+  document.getElementById('errMsg').textContent = msg;
+  document.getElementById('refInput').classList.toggle('err', !!msg);
+}
+
+function check() {
+  setErr('');
+  var raw = document.getElementById('refInput').value.replace(/\D/g,'');
+  if (!raw) { setErr('Please enter your 14-digit reference number.'); return; }
+  if (raw.length !== 14) { setErr('Must be exactly 14 digits. You entered ' + raw.length + '.'); return; }
+  lastRef = raw;
+  fetchBill(raw);
+}
+
+function fetchBill(refno) {
+  document.getElementById('result').style.display = 'none';
+  document.getElementById('loader').style.display = 'block';
+  document.getElementById('checkBtn').disabled = true;
+
+  fetch(PROXY_URL + '?refno=' + refno)
+    .then(function(r){ return r.json(); })
+    .then(function(data){ renderBill(data); })
+    .catch(function(){ showError('Connection error. Please try again.'); })
+    .finally(function(){
+      document.getElementById('loader').style.display = 'none';
+      document.getElementById('checkBtn').disabled = false;
+    });
+}
+
+function showError(msg) {
+  setErr(msg);
+  document.getElementById('loader').style.display = 'none';
+  document.getElementById('checkBtn').disabled = false;
+}
+
+function renderBill(d) {
+  // PITC returns billingmonth, duedate, amount, payableamount,
+  // consumerName, address, unitsconsumed, status, etc.
+  // Adjust field names below if PITC changes their JSON keys.
+
+  if (d.error || d.status === 'failure' || !d.billingmonth) {
+    showError('No bill found for this reference number.');
+    return;
+  }
+
+  document.getElementById('rName').textContent = d.consumerName || d.consumername || 'Consumer';
+  document.getElementById('rRef').textContent = 'Ref: ' + lastRef + ' · ' + (d.tariffType || d.tarifftype || '') + ' · ' + (d.sdoName || d.sdoname || 'Faisalabad');
+
+  var amt = d.payableamount || d.amount || d.netPayable || 0;
+  var lateAmt = d.payableAmountAfterDueDate || d.amountafterdue || 0;
+  document.getElementById('rAmount').textContent = Rs(amt);
+  document.getElementById('rDue').textContent = 'Due: ' + (d.duedate || '—');
+  document.getElementById('rUnits').textContent = (d.unitsconsumed || d.unitsConsumed || '—');
+  document.getElementById('rBillMonth').textContent = d.billingmonth || d.billingMonth || '';
+  document.getElementById('rLate').textContent = Rs(lateAmt);
+
+  var paid = String(d.paymentStatus || d.paymentstatus || '').toLowerCase().includes('paid');
+  var badge = document.getElementById('rBadge');
+  if (paid) { badge.textContent='Paid'; badge.className='badge badge-paid'; }
+  else { badge.textContent='Unpaid'; badge.className='badge badge-unpaid'; }
+
+  // Charge breakdown
+  var charges = [
+    ['Electricity charges', d.electricityCharges || d.electricitycharges || ''],
+    ['FPA (fuel price adjustment)', d.fpa || d.FPA || ''],
+    ['TR surcharge', d.trSurcharge || d.trsurcharge || ''],
+    ['FC surcharge', d.fcSurcharge || d.fcsurcharge || ''],
+    ['GST', d.gst || d.GST || ''],
+    ['TV licence fee', d.tvFee || d.tvfee || 35],
+  ];
+  var html = '';
+  charges.forEach(function(c){
+    if(!c[1] && c[1]!==0) return;
+    html += '<div class="charge-row"><span class="charge-label">'+c[0]+'</span><span class="charge-val">'+Rs(c[1])+'</span></div>';
+  });
+  html += '<div class="charge-row"><span class="charge-label">Total payable</span><span class="charge-val red">'+Rs(amt)+'</span></div>';
+  document.getElementById('chargesBox').innerHTML = html;
+
+  document.getElementById('result').style.display = 'block';
+}
+
+function viewFullBill() {
+  window.open('https://bill.pitc.com.pk/fescobill/general?refno=' + lastRef, '_blank');
+}
+
+function openPay(method) {
+  var urls = {
+    jazzcash: 'https://www.jazzcash.com.pk/pay-bills/',
+    easypaisa: 'https://easypaisa.com.pk/utility-bills/',
+    bank: 'https://www.hbl.com/personal/digital-banking/internet-banking/'
+  };
+  window.open(urls[method], '_blank');
+}
+</script>
+</body>
+</html>
